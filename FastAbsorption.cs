@@ -1,4 +1,5 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
@@ -12,17 +13,25 @@ namespace FastAbsorption
     {
         Harmony harmony;
 
-        static private readonly int SPEED_MULTIPLIER = 100;
+        public static ConfigEntry<int> frequencyMultiplier;
+        public static ConfigEntry<int> travelSpeedMultiplier;
 
         void Start()
         {
+            frequencyMultiplier = Config.Bind<int>("General", "frequencyMultiplier", 10, "How much more frequently should sail be requested by every DysonSphere node [Value must be between 1 (no effect - one sail every 2 seconds) and 120 (one sail every frame)]");
+            travelSpeedMultiplier = Config.Bind<int>("General", "travelSpeedMultiplier", 1, "How much faster do sails take to travel to the requesting node. Values greater than 1 make the sail teleport to the proximity of the target node. [Value must be between 1 (no effect - 2minutes travel time) and 120 (2 second travel time)]");
+
+            frequencyMultiplier.Value = Math.Min(Math.Max(frequencyMultiplier.Value, 1), 120); // clamping value between 1 and 120
+            travelSpeedMultiplier.Value = Math.Min(Math.Max(travelSpeedMultiplier.Value, 1), 120); // clamping value between 1 and 120
+
+
             harmony = new Harmony("com.brokenmass.plugin.DSP.FastAbsorption");
             try
             {
                 harmony.PatchAll(typeof(DysonSphereLayer_GameTick_Patch));
                 harmony.PatchAll(typeof(DysonSwarm_AbsorbSail_Patch));
 
-                Debug.Log($"[FastAbsorption Mod] Sail absorption speed multiplier : {SPEED_MULTIPLIER}x");
+                Debug.Log($"[FastAbsorption Mod] frequencyMultiplier : {frequencyMultiplier.Value}x | travelSpeedMultiplier : {travelSpeedMultiplier.Value}x ");
             }
             catch (Exception e)
             {
@@ -47,7 +56,7 @@ namespace FastAbsorption
                 {
                     if (code[i].LoadsConstant(120L))
                     {
-                        code[i].operand = (int)(120 / SPEED_MULTIPLIER);
+                        code[i].operand = (int)(120 / frequencyMultiplier.Value);
                     }
                 }
 
@@ -66,7 +75,7 @@ namespace FastAbsorption
                 {
                     if (code[i].LoadsConstant(14400L))
                     {
-                        code[i].operand = (int)(14400L / SPEED_MULTIPLIER);
+                        code[i].operand = (int)(14400L / travelSpeedMultiplier.Value);
                         break;
                     }
                 }
